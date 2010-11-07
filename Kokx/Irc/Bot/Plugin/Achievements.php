@@ -215,7 +215,7 @@ class Kokx_Irc_Bot_Plugin_Achievements implements Kokx_Irc_Bot_Plugin_PluginInte
 
                 $this->_client->send('New achievement added!', $event['target']);
             }
-        } else if (preg_match('/!list( (?<nick>' . self:: NICK_REGEX . '))?/i', $event['message'], $matches)) {
+        } else if (preg_match('/^!list( (?<nick>' . self:: NICK_REGEX . '))?/i', $event['message'], $matches)) {
             if (empty($matches['nick'])) {
                 $matches['nick'] = $event['nick'];
             }
@@ -224,12 +224,31 @@ class Kokx_Irc_Bot_Plugin_Achievements implements Kokx_Irc_Bot_Plugin_PluginInte
             if (null !== ($user = $this->_getUserId($matches['nick']))) {
                 $this->_client->send('The achievements of ' . $matches['nick'] . ':', $event['target']);
 
+				$achieved = "";
+				$inProgress = "";
+				
                 foreach ($this->_getAchievements($user) as $achievement) {
-                    $this->_client->send($achievement['id'] . ': '
-                                       . $achievement['achievement']
-                                       . ' ['
-                                       . ($achievement['achieved'] == 'true' ? 'achieved' : 'in progress')
-                                       . ']', $event['target']);
+                	if($achievement['achieved'] == 'true') {
+                		$achieved .= $achievement['id'] . ': ' . $achievement['achievement'] . "\n";
+                	} else {
+                		$inProgress .= $achievement['id'] . ': ' . $achievement['achievement'] . "\n";
+                	}
+                }
+                                
+                //no \n support == fail
+                $achArr = explode("\n",$achieved);
+                $progArr = explode("\n",$inProgress);
+                
+                //send achieved
+                foreach ($achArr as $ach) {
+                	if(strlen($ach) > 0) //filter out nonsense
+	                	$this->_client->send('[achieved]    ' . $ach, $event['target']);
+                }
+                
+                //send in progress
+                foreach ($progArr as $ach) {
+                	if(strlen($ach) > 0)
+	                	$this->_client->send('[in progress] ' . $ach, $event['target']);
                 }
             } else {
                 $this->_client->send('I dunno who the fuck ' . $matches['nick'] . ' is.', $event['target']);
@@ -260,6 +279,8 @@ class Kokx_Irc_Bot_Plugin_Achievements implements Kokx_Irc_Bot_Plugin_PluginInte
                 } else {
                     $this->_client->send('Someone should unlock the achievement \'EPIC FAIL\' for ' . $event['nick'] . '!', $event['target']);
                 }
+            } else {
+                $this->_client->send('Fail!!',$event['target']);
             }
         } else if (preg_match('/^!refresh/i', $event['message'])) {
             $this->_refresh();
